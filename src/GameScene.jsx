@@ -1,20 +1,16 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, Suspense } from 'react';
 import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 function GameScene() {
   const mountRef = useRef(null);
-
-  // Cargar el modelo del arma (asegúrate de tener el archivo .glb en tu carpeta public/models)
-  const gun = useLoader(GLTFLoader, '/models/9mm_pistol.glb'); // Cambia 'arma.glb' por el nombre de tu modelo
+  const gun = useLoader(GLTFLoader, '/models/9mm_pistol.glb');
 
   useEffect(() => {
-    // Configuración de la escena
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1e1e1e);
 
-    // Configuración de la cámara
     const camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
@@ -23,36 +19,31 @@ function GameScene() {
     );
     camera.position.z = 5;
 
-    // Renderizador
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     mountRef.current.appendChild(renderer.domElement);
 
-    // Luz
     const light = new THREE.PointLight(0xffffff, 1, 100);
     light.position.set(10, 10, 10);
     scene.add(light);
 
-    // Función de animación
+    if (gun.scene) {
+      // Posicionar, escalar y rotar el arma para que el cañón apunte hacia el frente
+      gun.scene.position.set(0.3, -0.5, -1); // Ajuste de posición
+      gun.scene.rotation.set(0, 3*(Math.PI) / 2, 0); // Rotación para que apunte hacia el frente
+      gun.scene.scale.set(0.5, 0.5, 0.5); // Escala para reducir el tamaño
+      
+      camera.add(gun.scene); // Añadir el arma como hijo de la cámara
+    }
+    scene.add(camera);
+
     const animate = () => {
       requestAnimationFrame(animate);
-
-      // Actualizamos la rotación de la cámara para un efecto en primera persona
-      camera.rotation.x += 0.001;
-      camera.rotation.y += 0.001;
-
-      // Añadimos el arma a la escena (ajustamos la posición para que parezca que está siendo sostenida)
-      if (gun.scene) {
-        gun.scene.position.set(0, -1, -2);  // Ajusta la posición del arma según lo desees
-        scene.add(gun.scene);
-      }
-
       renderer.render(scene, camera);
     };
 
     animate();
 
-    // Limpiar el renderizador al desmontar
     return () => {
       mountRef.current.removeChild(renderer.domElement);
     };
@@ -61,4 +52,10 @@ function GameScene() {
   return <div ref={mountRef} style={{ width: '100vw', height: '100vh' }} />;
 }
 
-export default GameScene;
+export default function App() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <GameScene />
+    </Suspense>
+  );
+}
