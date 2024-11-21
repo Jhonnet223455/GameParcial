@@ -5,15 +5,21 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import './gamescene.css'
 
 
+
+
 function GameScene() {
   const mountRef = useRef(null);
   const gun = useLoader(GLTFLoader, '/models/9mm_pistol.glb');
   const room = useLoader(GLTFLoader, '/models/room.glb');
 
 
+
+
   useEffect(() => {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1e1e1e);
+
+
 
 
     const camera = new THREE.PerspectiveCamera(
@@ -25,9 +31,13 @@ function GameScene() {
     camera.position.set(4.8, 1, -1); // Posicionar la cámara dentro del room
 
 
+
+
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     mountRef.current.appendChild(renderer.domElement);
+
+
 
 
     // Configurar luz direccional simulando el sol
@@ -37,12 +47,17 @@ function GameScene() {
     scene.add(directionalLight);
 
 
+
+
     const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
     scene.add(ambientLight);
 
 
+
+
     const handlePointerLockChange = () => {
       if (document.pointerLockElement === mountRef.current) {
+        startTimer();
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('click', shootAnimation);
         setInterval(generateTargets, 300);
@@ -52,10 +67,15 @@ function GameScene() {
     };
 
 
+
+
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let targetCounter = 0;
     const counter = document.querySelector('.counter')
+    let shootCounter = 0;
+    let accuracy;
+    const shootAccuracy = document.querySelector('.accuracy')
 
 
     const shootAnimation = () => {
@@ -64,32 +84,44 @@ function GameScene() {
       setTimeout(() => {
         gun.scene.rotation.x -= 0.2;
       }, 50);
+      shootCounter += 1;
 
 
       // Disparar un rayo desde la cámara
       raycaster.setFromCamera(mouse, camera);
 
 
+
+
       // Intersectar el rayo con los objetivos
       const intersects = raycaster.intersectObjects(scene.children, true);
+
+
 
 
       // Si hay intersecciones, eliminar el primer objetivo
       for (let i = 0; i < intersects.length; i++) {
         if (intersects[i].object.name === 'esfera') {
           targetCounter += 1;
-          counter.textContent = `Targets Eliminados: ${targetCounter}`
+          counter.textContent = `PTS ${targetCounter}`
           removeTarget(intersects[i].object);
           break;
         }
       }
+      accuracy = (targetCounter/shootCounter)*100;
+      // console.log(accuracy)
+      shootAccuracy.textContent = `${Math.floor(accuracy)}%`
     };
    
+
+
 
 
     const handleClicked = () => {
       mountRef.current.requestPointerLock();
     };
+
+
 
 
     // Cargar y agregar el room a la escena
@@ -98,6 +130,8 @@ function GameScene() {
       room.scene.scale.set(1, 1, 1); // Ajusta la escala según el tamaño del room
       scene.add(room.scene);
     }
+
+
 
 
     // Añadir el arma como hijo de la cámara
@@ -110,7 +144,11 @@ function GameScene() {
     scene.add(camera);
 
 
+
+
     const targets = []; // Array para almacenar los objetivos
+
+
 
 
     const generateTargets = () => {
@@ -118,10 +156,14 @@ function GameScene() {
       if (targets.length >= 3) return;
 
 
+
+
       let positionX = getRandomArbitrary(2, 8.2);
       let positionY = getRandomArbitrary(0.5, 2.5);
       // console.log("Position x: " + positionX);
       // console.log("Position y: " + positionY);
+
+
 
 
       const geometry = new THREE.SphereGeometry(0.3, 54, 54);
@@ -137,7 +179,11 @@ function GameScene() {
       }
 
 
+
+
     };
+
+
 
 
     const targetCollides = (target) => {
@@ -150,7 +196,11 @@ function GameScene() {
       }
 
 
+
+
     }
+
+
 
 
     // Llama a esta función después de eliminar un objetivo
@@ -160,21 +210,43 @@ function GameScene() {
     };
 
 
+
+
     function getRandomArbitrary(min, max) {
       return Math.random() * (max - min) + min;
     }
 
 
+
+
     const timer = document.querySelector('.timer');
     let time = 60000; // 60 segundos
-      setInterval(() => {
+    let hasStarted = false; // Estado para controlar si el temporizador comenzó
+    let timerInterval = null;
+
+
+    const startTimer = () => {
+      if (hasStarted) return; // Si ya comenzó, no hacer nada
+      hasStarted = true; // Cambiar el estado
+      timerInterval = setInterval(() => {
         time -= 1000;
-        timer.textContent = `Tiempo: ${time / 1000} segundos`;
-        if (time <= 0) {
-          timer.textContent = '¡Juego terminado!';
+        timer.textContent = `0:${time / 1000} `;
+        if(time < 10000 && time > 0){
+          timer.textContent = `0:0${time / 1000} `;
+        }
+        else if (time <= 0) {
+          timer.textContent = `0:0${time / 1000} `;
+          clearInterval(timerInterval); // Detener el temporizador
+          // timer.textContent = '¡Juego terminado!';
           document.exitPointerLock();
         }
+       
       }, 1000);
+    };
+
+
+
+
 
 
 
@@ -199,13 +271,19 @@ function GameScene() {
     window.addEventListener('click', handleClicked);
 
 
+
+
     const animate = () => {
       requestAnimationFrame(animate);
       renderer.render(scene, camera);
     };
 
 
+
+
     animate();
+
+
 
 
     // Limpiar el renderizador y remover eventos al desmontar
@@ -217,16 +295,33 @@ function GameScene() {
   }, [gun, room]);
 
 
+
+
   return (
     <div ref={mountRef} style={{ width: '100vw', height: '100vh', cursor: 'none' }}>
-      <div className='timer' style={{ position: 'absolute', top: '10px', left: '50%', color: 'white' }}></div>
-      <div className='counter'style={{ position: 'absolute', top: '10px', left: '30%', color: 'white' }}></div>
+      <div className="absolute top-5 left-1/2 transform -translate-x-1/2 flex items-center">
+      <div className="accuracy text-white text-lg font-semibold py-2 px-4  shadow-md">
+        100%
+        </div>
+        <div className="timer text-white text-2xl font-semibold py-2 px-4 shadow-md">
+          1:00
+        </div>
+
+
+        <div className="counter text-white text-lg font-semibold py-2 px-4  shadow-md">
+          PTS 0
+        </div>
+      </div>
       <div className='crosshair' style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '5px', height: '5px', backgroundColor: 'red' }}></div>
     </div>
 
 
+
+
   );
 }
+
+
 
 
 export default function App() {
@@ -239,3 +334,5 @@ export default function App() {
     </Suspense>
   );
 }
+
+
