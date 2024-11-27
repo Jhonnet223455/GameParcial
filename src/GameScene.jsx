@@ -6,6 +6,20 @@ import './gamescene.css'
 
 
 
+function Popup({points, accuracy, onClose, onRestart}) {
+  return (
+    <div className="popup">
+      <div className="popup-inner">
+        <h2>¡Juego terminado!</h2>
+        <p>Puntos: {points}</p>
+        <p>Exactitud: {accuracy}%</p>
+        <button onClick={onClose}>Cerrar</button>
+        <button onClick={onRestart}>Reiniciar</button>
+      </div>
+    </div>
+  );
+  
+}
 
 function GameScene() {
   const mountRef = useRef(null);
@@ -16,19 +30,25 @@ function GameScene() {
 
 
   useEffect(() => {
+    // Create a scene
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1e1e1e);
 
+    //state for popup
+    // const [showPopup, setShowPopup] = React.useState(false);
 
 
+    //sound effects
+    const shootSound = new Audio('/sounds/shoot.mp3');
+    const popSound = new Audio('/sounds/pop.mp3');
 
     const camera = new THREE.PerspectiveCamera(
-      60, // Ajusta aquí el FOV
+      60, // adjust the field of view
       window.innerWidth / window.innerHeight,
-      0.1, // Plano cercano para evitar recortes en modelos cercanos
+      0.1, // near clipping plane
       1000
     );
-    camera.position.set(4.8, 1, -1); // Posicionar la cámara dentro del room
+    camera.position.set(4.8, 1, -1); // Set the camera position
 
 
 
@@ -40,7 +60,7 @@ function GameScene() {
 
 
 
-    // Configurar luz direccional simulando el sol
+    // Add a plane to the scene
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
     directionalLight.position.set(10, 10, 10);
     directionalLight.castShadow = true;
@@ -79,29 +99,31 @@ function GameScene() {
 
 
     const shootAnimation = () => {
-      // Animación del retroceso del arma
+      // Recoil effect
       gun.scene.rotation.x += 0.2;
       setTimeout(() => {
         gun.scene.rotation.x -= 0.2;
       }, 50);
       shootCounter += 1;
+      
+      shootSound.play();
 
-
-      // Disparar un rayo desde la cámara
+      // set the direction of the ray
       raycaster.setFromCamera(mouse, camera);
 
 
 
 
-      // Intersectar el rayo con los objetivos
+      // find all intersected objects
       const intersects = raycaster.intersectObjects(scene.children, true);
 
 
 
 
-      // Si hay intersecciones, eliminar el primer objetivo
+      // check if the intersected object is a sphere
       for (let i = 0; i < intersects.length; i++) {
         if (intersects[i].object.name === 'esfera') {
+          popSound.play();
           targetCounter += 1;
           counter.textContent = `PTS ${targetCounter}`
           removeTarget(intersects[i].object);
@@ -124,17 +146,17 @@ function GameScene() {
 
 
 
-    // Cargar y agregar el room a la escena
+    // Load the room and gun models
     if (room.scene) {
-      room.scene.position.set(0, 0, 0); // Centrar el room en la escena
-      room.scene.scale.set(1, 1, 1); // Ajusta la escala según el tamaño del room
+      room.scene.position.set(0, 0, 0); // Adjust main room position
+      room.scene.scale.set(1, 1, 1); // Adjust main room scale
       scene.add(room.scene);
     }
 
 
 
 
-    // Añadir el arma como hijo de la cámara
+    // Load the gun model and add it to the camera
     if (gun.scene) {
       gun.scene.position.set(0.3, -0.45, -1);
       gun.scene.rotation.set(0, (3 * Math.PI) / 2, 0);
@@ -146,13 +168,13 @@ function GameScene() {
 
 
 
-    const targets = []; // Array para almacenar los objetivos
+    const targets = []; // Array for storing the spheres
 
 
 
 
     const generateTargets = () => {
-      // Si ya hay 3 o más esferas, no agregar más
+      // If there are already 3 targets, don't generate more
       if (targets.length >= 3) return;
 
 
@@ -187,7 +209,7 @@ function GameScene() {
 
 
     const targetCollides = (target) => {
-      // comprueba si la esfera colisiona con otra esfera
+      // check if the target collides with any other target
       for (let i = 0; i < targets.length; i++) {
         if (targets[i] !== target) {
           const distance = target.position.distanceTo(targets[i].position);
@@ -203,10 +225,10 @@ function GameScene() {
 
 
 
-    // Llama a esta función después de eliminar un objetivo
+    // Called when a target is hit
     const removeTarget = (target) => {
-      scene.remove(target);       // Remueve la esfera de la escena
-      targets.splice(targets.indexOf(target), 1);  // Remueve del array
+      scene.remove(target);       // Remove from the scene
+      targets.splice(targets.indexOf(target), 1);  // Remove from the array
     };
 
 
@@ -220,14 +242,14 @@ function GameScene() {
 
 
     const timer = document.querySelector('.timer');
-    let time = 60000; // 60 segundos
-    let hasStarted = false; // Estado para controlar si el temporizador comenzó
+    let time = 60000; // 60 seconds
+    let hasStarted = false; // Estate to check if the timer has started
     let timerInterval = null;
 
 
     const startTimer = () => {
-      if (hasStarted) return; // Si ya comenzó, no hacer nada
-      hasStarted = true; // Cambiar el estado
+      if (hasStarted) return; // If the timer has already started, don't start it again
+      hasStarted = true; // Change the state to true
       timerInterval = setInterval(() => {
         time -= 1000;
         timer.textContent = `0:${time / 1000} `;
@@ -236,7 +258,7 @@ function GameScene() {
         }
         else if (time <= 0) {
           timer.textContent = `0:0${time / 1000} `;
-          clearInterval(timerInterval); // Detener el temporizador
+          clearInterval(timerInterval); // Stop the timer
           // timer.textContent = '¡Juego terminado!';
           document.exitPointerLock();
         }
@@ -255,18 +277,18 @@ function GameScene() {
       const mouseX = (event.movementX / window.innerWidth) * 2;
       const mouseY = -(event.movementY / window.innerHeight) * 2;
    
-      // Ajustar la rotación en los ejes X e Y sin afectar el eje Z
+      // Adjust the camera rotation based on the mouse movement
       camera.rotation.y -= mouseX * 0.3; // Sensibilidad horizontal (Y)
       camera.rotation.x += mouseY * 0.3; // Sensibilidad vertical (X)
    
-      // Limitar el ángulo vertical de la cámara
+      // Limits the vertical rotation of the camera
       const maxVerticalRotation = Math.PI / 2; // 90 grados hacia arriba o abajo
       camera.rotation.x = Math.max(-maxVerticalRotation, Math.min(maxVerticalRotation, camera.rotation.x));
    
-      // Asegurarse de que la rotación en Z siempre sea 0 para evitar inclinación
+      // Limits the horizontal rotation of the camera
       camera.rotation.z = 0;
     };
-    // Escuchar el evento de cambio de bloqueo de puntero
+    // Add event listeners
     document.addEventListener('pointerlockchange', handlePointerLockChange);
     window.addEventListener('click', handleClicked);
 
@@ -286,7 +308,7 @@ function GameScene() {
 
 
 
-    // Limpiar el renderizador y remover eventos al desmontar
+    // Clear 
     return () => {
       mountRef.current.removeChild(renderer.domElement);
       document.removeEventListener('pointerlockchange', handlePointerLockChange);
